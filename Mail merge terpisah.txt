@@ -1,0 +1,68 @@
+Sub SimpanMailMergePMLTerpisah()
+    Dim MasterDoc As Document, SingleDoc As Document
+    Dim MailMergeCtrl As MailMerge
+    Dim PathFolder As String
+    Dim JumlahRecord As Long
+    Dim i As Long
+    Dim NamaFile As String
+
+    Set MasterDoc = ActiveDocument
+    Set MailMergeCtrl = MasterDoc.MailMerge
+
+    ' =========================================================================
+    ' 1. PENGATURAN FOLDER PENYIMPANAN
+    ' Pastikan Anda sudah membuat folder "SPK PML" di Drive D komputer Anda.
+    ' Jika ingin dipindah ke OneDrive, silakan ganti baris di bawah ini.
+    ' =========================================================================
+    PathFolder = "D:\SPK PML\"
+
+    ' Menghitung jumlah total data yang ada di Excel baru Anda
+    MailMergeCtrl.DataSource.ActiveRecord = wdLastRecord
+    JumlahRecord = MailMergeCtrl.DataSource.ActiveRecord
+
+    ' Perulangan otomatis dari data pertama sampai data terakhir
+    For i = 1 To JumlahRecord
+        MailMergeCtrl.DataSource.ActiveRecord = i
+        
+        ' =========================================================================
+        ' 2. PENGATURAN NAMA FILE UTOMATIS (SESUAI KOLOM EXCEL BARU)
+        ' - DataFields(5) = Kolom ke-5 di Excel (mengambil kode Kelas/Wilayah, misal: 2.B2)
+        ' - DataFields(7) = Kolom ke-7 di Excel (mengambil Nama Petugas PML Anda)
+        '
+        ' CATATAN: Jika nama petugas ternyata ada di Kolom H, ganti angka 7 menjadi 8.
+        ' =========================================================================
+        NamaFile = MailMergeCtrl.DataSource.DataFields(5).Value & " - " & MailMergeCtrl.DataSource.DataFields(7).Value
+        
+        ' Jika kolom nama kosong, otomatis diberi nama nomor urut agar tidak error
+        If Trim(NamaFile) = "" Or Trim(NamaFile) = "-" Then 
+            NamaFile = "Dokumen_PML_Baris_" & i
+        End If
+        
+        ' Membersihkan karakter yang dilarang oleh Windows untuk nama file
+        NamaFile = Replace(NamaFile, "/", "-")
+        NamaFile = Replace(NamaFile, "\", "-")
+        NamaFile = Replace(NamaFile, ":", "-")
+        NamaFile = Replace(NamaFile, "*", "-")
+        NamaFile = Replace(NamaFile, "?", "-")
+        NamaFile = Replace(NamaFile, "<", "-")
+        NamaFile = Replace(NamaFile, ">", "-")
+        NamaFile = Replace(NamaFile, "|", "-")
+        
+        ' Eksekusi Mail Merge khusus untuk baris data ini saja
+        MailMergeCtrl.Destination = wdSendToNewDocument
+        MailMergeCtrl.SuppressBlankLines = True
+        
+        With MailMergeCtrl
+            .DataSource.FirstRecord = i
+            .DataSource.LastRecord = i
+            .Execute Pause:=False
+        End With
+        
+        ' Simpan dokumen yang baru terbentuk langsung ke folder tujuan Anda
+        Set SingleDoc = ActiveDocument
+        SingleDoc.SaveAs2 FileName:=PathFolder & NamaFile & ".docx", FileFormat:=wdFormatXMLDocument
+        SingleDoc.Close SaveChanges:=False
+    Next i
+
+    MsgBox "Selesai! Berhasil memisahkan " & JumlahRecord & " file PML ke folder: " & PathFolder, vbInformation, "Proses Sukses"
+End Sub
